@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -23,4 +23,13 @@ pub enum Error {
         #[source]
         source: notable::ParseError,
     },
+}
+
+impl Error {
+    pub fn invalid_changelog(path: &Path, source: notable::ParseError) -> Self {
+        Error::Parse {
+            path: path.to_path_buf(),
+            source,
+        }
+    }
 }

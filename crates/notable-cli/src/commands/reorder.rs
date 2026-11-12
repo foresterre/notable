@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use clap::Args;
 use notable::ChangeKind;
 
-use super::{Command, invalid_changelog, read_changelog};
+use super::{Command, read_changelog};
 use crate::error::Error;
 
 #[derive(Debug, Args)]
@@ -37,7 +37,7 @@ impl Command for Reorder {
     fn run(&self, opts: Self::Opts) -> Result<(), Error> {
         let input = read_changelog(&opts.path)?;
         let output = notable::reorder_sections(&input, &opts.order)
-            .map_err(invalid_changelog(&opts.path))?;
+            .map_err(|source| Error::invalid_changelog(&opts.path, source))?;
 
         if !opts.write {
             return io::stdout()

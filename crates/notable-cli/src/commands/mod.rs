@@ -19,10 +19,3 @@ fn read_changelog(path: &Path) -> Result<String, Error> {
         source,
     })
 }
-
-fn invalid_changelog(path: &Path) -> impl FnOnce(notable::ParseError) -> Error + '_ {
-    move |source| Error::Parse {
-        path: path.to_path_buf(),
-        source,
-    }
-}

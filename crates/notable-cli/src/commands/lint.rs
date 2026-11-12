@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use super::{Command, invalid_changelog, read_changelog};
+use super::{Command, read_changelog};
 use crate::error::Error;
 
 #[derive(Debug, Args)]
@@ -19,7 +19,7 @@ impl Command for Lint {
 
     fn run(&self, opts: Self::Opts) -> Result<(), Error> {
         let input = read_changelog(&opts.path)?;
-        notable::parse(&input).map_err(invalid_changelog(&opts.path))?;
+        notable::parse(&input).map_err(|source| Error::invalid_changelog(&opts.path, source))?;
 
         writeln!(
             io::stdout().lock(),
