@@ -1,0 +1,11 @@
+[package]
+name = "notable-core"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+jiff = { version = "0.2.43", default-features = false, features = ["std"] }
+thiserror = "2.0.21"
