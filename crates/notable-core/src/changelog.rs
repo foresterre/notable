@@ -12,6 +12,29 @@ pub struct Changelog {
     pub releases: Vec<Release>,
 }
 
+impl Changelog {
+    /// Re-orders the order of each change kind section, for all versions (incl. Unreleased)
+    pub fn reorder_sections(&mut self, order: &[ChangeKind]) {
+        let unreleased = self
+            .unreleased
+            .iter_mut()
+            .map(|unreleased| &mut unreleased.sections);
+        let releases = self
+            .releases
+            .iter_mut()
+            .map(|release| &mut release.sections);
+
+        for sections in unreleased.chain(releases) {
+            sections.sort_by_key(|section| {
+                order
+                    .iter()
+                    .position(|kind| kind.as_str().eq_ignore_ascii_case(section.kind.as_str()))
+                    .unwrap_or(order.len())
+            });
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Unreleased {
     pub link: Option<String>,

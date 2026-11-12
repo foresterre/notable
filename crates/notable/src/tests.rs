@@ -575,3 +575,111 @@ fn custom_sections() {
         ]
     );
 }
+
+fn section_order(sections: &[Section]) -> Vec<(&str, Vec<&str>)> {
+    sections
+        .iter()
+        .map(|section| {
+            let entries = section
+                .entries
+                .iter()
+                .map(|entry| entry.text.as_str())
+                .collect();
+            (section.kind.as_str(), entries)
+        })
+        .collect()
+}
+
+#[test]
+fn reorder_sections() {
+    let mut changelog = parse(
+        "# Changelog
+
+## [Unreleased]
+
+### Fixed
+
+- unreleased fix
+
+### Performance
+
+- faster
+
+### Added
+
+- unreleased feature
+
+## [1.0.0]
+
+### Docs
+
+- docs
+
+### Security
+
+- patched
+
+### Fixed
+
+- fix
+
+### Added
+
+- feature
+- another feature
+
+## [0.1.0]
+",
+    )
+    .unwrap();
+
+    changelog.reorder_sections(&[
+        ChangeKind::Added,
+        ChangeKind::Custom("performance".into()),
+        ChangeKind::Fixed,
+        ChangeKind::Security,
+    ]);
+
+    assert_eq!(
+        section_order(&changelog.unreleased.unwrap().sections),
+        vec![
+            ("Added", vec!["unreleased feature"]),
+            ("Performance", vec!["faster"]),
+            ("Fixed", vec!["unreleased fix"]),
+        ]
+    );
+    assert_eq!(
+        section_order(&changelog.releases[0].sections),
+        vec![
+            ("Added", vec!["feature", "another feature"]),
+            ("Fixed", vec!["fix"]),
+            ("Security", vec!["patched"]),
+            ("Docs", vec!["docs"]),
+        ]
+    );
+    assert!(changelog.releases[1].sections.is_empty());
+}
+
+#[test]
+fn reorder_sections_keeps_unlisted_kinds_in_place() {
+    let mut changelog =
+        parse("# Changelog\n\n## [1.0.0]\n\n### Docs\n\n### Removed\n\n### Chores\n\n### Added\n")
+            .unwrap();
+
+    changelog.reorder_sections(&[ChangeKind::Added]);
+
+    let kinds: Vec<_> = changelog.releases[0]
+        .sections
+        .iter()
+        .map(|section| section.kind.as_str())
+        .collect();
+    assert_eq!(kinds, ["Added", "Docs", "Removed", "Chores"]);
+
+    changelog.reorder_sections(&[]);
+    let unchanged: Vec<_> = changelog.releases[0]
+        .sections
+        .iter()
+        .map(|section| section.kind.as_str())
+        .collect();
+    assert_eq!(unchanged, ["Added", "Docs", "Removed", "Chores"]);
+}
