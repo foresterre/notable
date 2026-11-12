@@ -1,0 +1,44 @@
+name: "ci-msrv"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+permissions:
+  contents: read
+
+jobs:
+  msrv:
+    name: msrv (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [notable, notable-cli, notable-core]
+    steps:
+      - name: checkout_repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: install_rust
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+
+      - name: install_cargo_msrv
+        uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        with:
+          tool: cargo-msrv
+
+      - name: verify_msrv
+        env:
+          CRATE: ${{ matrix.crate }}
+        run: cargo msrv verify --path "crates/${CRATE}" --output-format json
+
+      - name: find_msrv
+        if: ${{ failure() }}
+        env:
+          CRATE: ${{ matrix.crate }}
+        run: cargo msrv find --path "crates/${CRATE}" --output-format json
