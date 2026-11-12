@@ -2,11 +2,9 @@ use std::fmt;
 
 use crate::ChangeKind;
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error(
-    "expected one of `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`, found `{0}`"
-)]
-pub struct UnknownChangeKind(pub String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("expected the name of a kind of change, found an empty string")]
+pub struct EmptyChangeKind;
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum DateError {
@@ -88,10 +86,8 @@ pub enum ReleaseError {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SectionError {
-    #[error(
-        "expected one of `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`, found `{name}` at line {line}"
-    )]
-    UnknownKind { name: String, line: usize },
+    #[error("expected a section name like `### Added`, found an empty heading at line {line}")]
+    MissingName { line: usize },
     #[error("expected a single `{kind}` section per release, found a second one at line {line}")]
     Duplicate { kind: ChangeKind, line: usize },
     #[error("expected a release heading like `## [1.0.0]`, found section `{kind}` at line {line}")]

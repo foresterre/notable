@@ -299,10 +299,14 @@ fn section_errors() {
     assert_errors(
         &[
             (
-                "# Changelog\n\n## [1.0.0]\n\n### Improved\n",
-                SectionError::UnknownKind {
-                    name: "Improved".to_string(),
-                    line: 5,
+                "# Changelog\n\n## [1.0.0]\n\n###\n",
+                SectionError::MissingName { line: 5 },
+            ),
+            (
+                "# Changelog\n\n## [1.0.0]\n\n### Docs\n\n### docs\n",
+                SectionError::Duplicate {
+                    kind: ChangeKind::Custom("docs".into()),
+                    line: 7,
                 },
             ),
             (
@@ -522,8 +526,8 @@ fn error_messages() {
             "expected the `Unreleased` section before all releases, found it after a release at line 5",
         ),
         (
-            "# Changelog\n\n## [1.0.0]\n\n### Improved\n",
-            "expected one of `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`, found `Improved` at line 5",
+            "# Changelog\n\n## [1.0.0]\n\n###\n",
+            "expected a section name like `### Added`, found an empty heading at line 5",
         ),
         (
             "# Changelog\n\n## [1.0.0]\n\n### Added\n\n### Added\n",
@@ -544,4 +548,30 @@ fn error_messages() {
     ] {
         assert_eq!(parse(input).unwrap_err().to_string(), expected);
     }
+}
+
+#[test]
+fn custom_sections() {
+    let changelog = parse(
+        "# Changelog\n\n## [1.0.0]\n\n### Added\n\n- a\n\n### Performance\n\n- b\n\n### `Breaking` changes\n\n- c\n",
+    )
+    .unwrap();
+
+    assert_eq!(
+        changelog.releases[0].sections,
+        vec![
+            Section {
+                kind: ChangeKind::Added,
+                entries: entries(&["a"]),
+            },
+            Section {
+                kind: ChangeKind::Custom("Performance".into()),
+                entries: entries(&["b"]),
+            },
+            Section {
+                kind: ChangeKind::Custom("Breaking changes".into()),
+                entries: entries(&["c"]),
+            },
+        ]
+    );
 }

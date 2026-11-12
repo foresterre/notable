@@ -1,7 +1,8 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{Date, UnknownChangeKind};
+use crate::{Date, EmptyChangeKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Changelog {
@@ -37,7 +38,7 @@ pub struct Entry {
     pub text: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ChangeKind {
     Added,
     Changed,
@@ -45,10 +46,11 @@ pub enum ChangeKind {
     Removed,
     Fixed,
     Security,
+    Custom(Cow<'static, str>),
 }
 
 impl ChangeKind {
-    pub const ALL: [ChangeKind; 6] = [
+    pub const STANDARD: [ChangeKind; 6] = [
         ChangeKind::Added,
         ChangeKind::Changed,
         ChangeKind::Deprecated,
@@ -57,7 +59,7 @@ impl ChangeKind {
         ChangeKind::Security,
     ];
 
-    pub fn as_str(self) -> &'static str {
+    pub fn as_str(&self) -> &str {
         match self {
             ChangeKind::Added => "Added",
             ChangeKind::Changed => "Changed",
@@ -65,6 +67,7 @@ impl ChangeKind {
             ChangeKind::Removed => "Removed",
             ChangeKind::Fixed => "Fixed",
             ChangeKind::Security => "Security",
+            ChangeKind::Custom(name) => name,
         }
     }
 }
@@ -76,14 +79,20 @@ impl fmt::Display for ChangeKind {
 }
 
 impl FromStr for ChangeKind {
-    type Err = UnknownChangeKind;
+    type Err = EmptyChangeKind;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let name = s.trim();
-        ChangeKind::ALL
+        if name.is_empty() {
+            return Err(EmptyChangeKind);
+        }
+
+        let kind = ChangeKind::STANDARD
             .into_iter()
             .find(|kind| kind.as_str().eq_ignore_ascii_case(name))
-            .ok_or_else(|| UnknownChangeKind(name.to_string()))
+            .unwrap_or_else(|| ChangeKind::Custom(Cow::Owned(name.to_string())));
+
+        Ok(kind)
     }
 }
 
@@ -93,7 +102,7 @@ mod tests {
 
     #[test]
     fn change_kind_round_trips() {
-        for kind in ChangeKind::ALL {
+        for kind in ChangeKind::STANDARD {
             assert_eq!(kind.to_string().parse::<ChangeKind>(), Ok(kind));
         }
     }
@@ -105,10 +114,17 @@ mod tests {
     }
 
     #[test]
-    fn unknown_change_kind() {
-        assert_eq!(
-            "Improved".parse::<ChangeKind>(),
-            Err(UnknownChangeKind("Improved".to_string()))
-        );
+    fn custom_change_kind() {
+        let kind = " Performance ".parse::<ChangeKind>().unwrap();
+
+        assert_eq!(kind, ChangeKind::Custom(Cow::Borrowed("Performance")));
+        assert_eq!(kind.as_str(), "Performance");
+        assert_eq!(kind.to_string(), "Performance");
+    }
+
+    #[test]
+    fn empty_change_kind() {
+        assert_eq!("".parse::<ChangeKind>(), Err(EmptyChangeKind));
+        assert_eq!("  ".parse::<ChangeKind>(), Err(EmptyChangeKind));
     }
 }

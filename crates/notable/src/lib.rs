@@ -211,9 +211,12 @@ impl<'a> Builder<'a> {
 
         let kind = name
             .parse::<ChangeKind>()
-            .map_err(|UnknownChangeKind(name)| SectionError::UnknownKind { name, line })?;
+            .map_err(|EmptyChangeKind| SectionError::MissingName { line })?;
 
-        if sections.iter().any(|section| section.kind == kind) {
+        if sections
+            .iter()
+            .any(|section| section.kind.as_str().eq_ignore_ascii_case(kind.as_str()))
+        {
             return Err(SectionError::Duplicate { kind, line });
         }
 
