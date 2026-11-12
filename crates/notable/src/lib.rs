@@ -45,6 +45,50 @@ use std::str::FromStr;
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag, TagEnd};
 
 pub fn parse(input: &str) -> Result<Changelog, ParseError> {
+    parse_document(input).map(|document| document.changelog)
+}
+
+pub fn reorder_sections(input: &str, order: &[ChangeKind]) -> Result<String, ParseError> {
+    let Document {
+        changelog,
+        section_spans,
+    } = parse_document(input)?;
+
+    let unreleased = changelog
+        .unreleased
+        .iter()
+        .map(|unreleased| &unreleased.sections);
+    let releases = changelog.releases.iter().map(|release| &release.sections);
+
+    let mut output = String::with_capacity(input.len());
+    let mut cursor = 0;
+
+    for (sections, spans) in unreleased.chain(releases).zip(&section_spans) {
+        let mut sorted: Vec<usize> = (0..sections.len()).collect();
+        sorted.sort_by_key(|&index| {
+            sections[index]
+                .kind
+                .position_in(order)
+                .unwrap_or(order.len())
+        });
+
+        for (slot, &from) in spans.iter().zip(&sorted) {
+            output.push_str(&input[cursor..slot.start]);
+            output.push_str(&input[spans[from].clone()]);
+            cursor = slot.end;
+        }
+    }
+
+    output.push_str(&input[cursor..]);
+    Ok(output)
+}
+
+struct Document {
+    changelog: Changelog,
+    section_spans: Vec<Vec<Range<usize>>>,
+}
+
+fn parse_document(input: &str) -> Result<Document, ParseError> {
     let mut builder = Builder::new(input);
     let mut events = Parser::new(input).into_offset_iter();
 
@@ -83,6 +127,7 @@ struct Builder<'a> {
     description_end: Option<usize>,
     unreleased: Option<Unreleased>,
     releases: Vec<Release>,
+    section_spans: Vec<Vec<Range<usize>>>,
 }
 
 impl<'a> Builder<'a> {
@@ -94,11 +139,16 @@ impl<'a> Builder<'a> {
             description_end: None,
             unreleased: None,
             releases: Vec::new(),
+            section_spans: Vec::new(),
         }
     }
 
     fn line(&self, offset: usize) -> usize {
         self.input[..offset].matches('\n').count() + 1
+    }
+
+    fn trimmed_end(&self, range: Range<usize>) -> usize {
+        range.start + self.input[range].trim_end().len()
     }
 
     fn require_title(&self, found: Block, line: usize) -> Result<(), TitleError> {
@@ -147,7 +197,7 @@ impl<'a> Builder<'a> {
             }
             HeadingLevel::H3 => {
                 self.require_title(found, line)?;
-                Ok(self.section(heading, line)?)
+                Ok(self.section(heading, range, line)?)
             }
             _ => self.content(found, range),
         }
@@ -176,6 +226,7 @@ impl<'a> Builder<'a> {
                 link,
                 sections: Vec::new(),
             });
+            self.section_spans.push(Vec::new());
             return Ok(());
         }
 
@@ -197,10 +248,17 @@ impl<'a> Builder<'a> {
             link,
             sections: Vec::new(),
         });
+        self.section_spans.push(Vec::new());
         Ok(())
     }
 
-    fn section(&mut self, heading: Heading, line: usize) -> Result<(), SectionError> {
+    fn section(
+        &mut self,
+        heading: Heading,
+        range: Range<usize>,
+        line: usize,
+    ) -> Result<(), SectionError> {
+        let span = range.start..self.trimmed_end(range);
         let name = heading.text.trim();
         let Some(sections) = self.sections_mut() else {
             return Err(SectionError::OutsideRelease {
@@ -224,6 +282,9 @@ impl<'a> Builder<'a> {
             kind,
             entries: Vec::new(),
         });
+        if let Some(spans) = self.section_spans.last_mut() {
+            spans.push(span);
+        }
         Ok(())
     }
 
@@ -232,6 +293,7 @@ impl<'a> Builder<'a> {
         self.require_title(Block::List, line)?;
 
         let input = self.input;
+        let end = self.trimmed_end(range);
         let Some(sections) = self.sections_mut() else {
             return Ok(());
         };
@@ -242,6 +304,13 @@ impl<'a> Builder<'a> {
         section.entries.extend(items.into_iter().map(|item| Entry {
             text: entry_text(&input[item]),
         }));
+        if let Some(span) = self
+            .section_spans
+            .last_mut()
+            .and_then(|spans| spans.last_mut())
+        {
+            span.end = end;
+        }
         Ok(())
     }
 
@@ -255,17 +324,20 @@ impl<'a> Builder<'a> {
         Ok(())
     }
 
-    fn finish(self) -> Result<Changelog, ParseError> {
+    fn finish(self) -> Result<Document, ParseError> {
         let title = self.title.ok_or(TitleError::Missing)?;
         let description_end = self.description_end.unwrap_or(self.input.len());
 
-        Ok(Changelog {
-            title,
-            description: self.input[self.description_start..description_end]
-                .trim()
-                .to_string(),
-            unreleased: self.unreleased,
-            releases: self.releases,
+        Ok(Document {
+            changelog: Changelog {
+                title,
+                description: self.input[self.description_start..description_end]
+                    .trim()
+                    .to_string(),
+                unreleased: self.unreleased,
+                releases: self.releases,
+            },
+            section_spans: self.section_spans,
         })
     }
 }

@@ -1,0 +1,19 @@
+[package]
+name = "notable-cli"
+version = { workspace = true }
+authors = { workspace = true }
+description = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+repository = { workspace = true }
+
+[[bin]]
+name = "notable"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+notable = { version = "0.1.0", path = "../notable" }
+thiserror = { workspace = true }

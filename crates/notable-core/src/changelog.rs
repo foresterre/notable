@@ -25,12 +25,7 @@ impl Changelog {
             .map(|release| &mut release.sections);
 
         for sections in unreleased.chain(releases) {
-            sections.sort_by_key(|section| {
-                order
-                    .iter()
-                    .position(|kind| kind.as_str().eq_ignore_ascii_case(section.kind.as_str()))
-                    .unwrap_or(order.len())
-            });
+            sections.sort_by_key(|section| section.kind.position_in(order).unwrap_or(order.len()));
         }
     }
 }
@@ -92,6 +87,12 @@ impl ChangeKind {
             ChangeKind::Security => "Security",
             ChangeKind::Custom(name) => name,
         }
+    }
+
+    pub fn position_in(&self, order: &[ChangeKind]) -> Option<usize> {
+        order
+            .iter()
+            .position(|kind| kind.as_str().eq_ignore_ascii_case(self.as_str()))
     }
 }
 

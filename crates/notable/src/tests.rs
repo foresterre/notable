@@ -528,7 +528,7 @@ fn section_order(sections: &[Section]) -> Vec<(&str, Vec<&str>)> {
 }
 
 #[test]
-fn reorder_sections() {
+fn reorder_changelog_sections() {
     let mut changelog = parse(
         "# Changelog
 
@@ -598,7 +598,7 @@ fn reorder_sections() {
 }
 
 #[test]
-fn reorder_sections_keeps_unlisted_kinds_in_place() {
+fn reorder_changelog_sections_keeps_unlisted_kinds_in_place() {
     let mut changelog =
         parse("# Changelog\n\n## [1.0.0]\n\n### Docs\n\n### Removed\n\n### Chores\n\n### Added\n")
             .unwrap();
@@ -683,4 +683,132 @@ fn bracketed_versions_without_link_definitions() {
     assert_eq!(changelog.releases[0].link, None);
     assert_eq!(changelog.releases[1].version, "0.9.0");
     assert_eq!(changelog.releases[1].link, None);
+}
+
+#[test]
+fn reorder_sections_keeps_the_text_as_is() {
+    let input = "<!-- markdownlint-disable MD024 -->
+# Changelog
+
+Some description.
+
+## [Unreleased]
+
+### Fixed
+* A fix ([#2]).
+
+### Added
+
+- A feature.
+  Spanning two lines.
+
+<!-- a comment between sections -->
+
+### Performance
+
+1. Faster.
+
+## [1.0.0] - 2020-01-01
+
+### Security
+
+- Patched.
+
+### Added
+
+- First.
+- Second.
+
+## [0.1.0] - 2019-01-01
+
+[unreleased]: https://example.com/compare/v1.0.0...HEAD
+[1.0.0]: https://example.com/v1.0.0
+[#2]: https://example.com/issues/2
+";
+
+    let expected = "<!-- markdownlint-disable MD024 -->
+# Changelog
+
+Some description.
+
+## [Unreleased]
+
+### Added
+
+- A feature.
+  Spanning two lines.
+
+### Fixed
+* A fix ([#2]).
+
+<!-- a comment between sections -->
+
+### Performance
+
+1. Faster.
+
+## [1.0.0] - 2020-01-01
+
+### Added
+
+- First.
+- Second.
+
+### Security
+
+- Patched.
+
+## [0.1.0] - 2019-01-01
+
+[unreleased]: https://example.com/compare/v1.0.0...HEAD
+[1.0.0]: https://example.com/v1.0.0
+[#2]: https://example.com/issues/2
+";
+
+    let output = reorder_sections(input, &ChangeKind::STANDARD).unwrap();
+    assert_eq!(output, expected);
+
+    let mut changelog = parse(input).unwrap();
+    changelog.reorder_sections(&ChangeKind::STANDARD);
+    assert_eq!(parse(&output).unwrap(), changelog);
+
+    assert_eq!(
+        reorder_sections(&output, &ChangeKind::STANDARD).unwrap(),
+        output
+    );
+}
+
+#[parameterized(
+    no_releases = { "# Changelog\n\nNothing yet.\n" },
+    no_sections = { "# Changelog\n\n## [1.0.0]\n\n## [0.1.0]\n" },
+    already_ordered = { "# Changelog\n\n## [1.0.0]\n\n### Added\n\n- a\n\n### Fixed\n\n- b\n" },
+    unlisted_only = { "# Changelog\n\n## [1.0.0]\n\n### Docs\n\n- a\n\n### Chores\n\n- b\n" },
+)]
+fn reorder_sections_without_changes(input: &str) {
+    assert_eq!(
+        reorder_sections(input, &ChangeKind::STANDARD).unwrap(),
+        input
+    );
+}
+
+#[test]
+fn reorder_sections_without_trailing_newline() {
+    let output = reorder_sections(
+        "# Changelog\n\n## [1.0.0]\n\n### Fixed\n\n- b\n\n### Added\n\n- a",
+        &ChangeKind::STANDARD,
+    )
+    .unwrap();
+
+    assert_eq!(
+        output,
+        "# Changelog\n\n## [1.0.0]\n\n### Added\n\n- a\n\n### Fixed\n\n- b"
+    );
+}
+
+#[test]
+fn reorder_sections_reports_parse_errors() {
+    assert!(matches!(
+        reorder_sections("## [1.0.0]\n", &ChangeKind::STANDARD),
+        Err(ParseError::Title(TitleError::Expected { line: 1, .. }))
+    ));
 }

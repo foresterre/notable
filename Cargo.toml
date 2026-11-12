@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/notable",
+    "crates/notable-cli",
     "crates/notable-core",
 ]
 
@@ -11,6 +12,7 @@ authors = ["Martijn Gribnau <garm@ilumeo.com>"]
 description = "Parser, linter and merge conflict solver for keep-a-changelog like Changelog's"
 license = "Apache-2.0 OR MIT"
 edition = "2024"
+rust-version = "1.85"
 repository = "https://github.com/foresterre/notable"
 
 [workspace.dependencies]
