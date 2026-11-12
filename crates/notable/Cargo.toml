@@ -10,3 +10,6 @@ repository = { workspace = true }
 [dependencies]
 notable-core = { version = "0.1.0", path = "../notable-core" }
 pulldown-cmark = { version = "0.13.6", default-features = false }
+
+[dev-dependencies]
+yare = { workspace = true }

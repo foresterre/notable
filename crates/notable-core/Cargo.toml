@@ -8,5 +8,8 @@ edition = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-jiff = { version = "0.2.43", default-features = false, features = ["std"] }
-thiserror = "2.0.21"
+jiff = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+yare = { workspace = true }

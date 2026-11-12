@@ -122,18 +122,28 @@ impl FromStr for ChangeKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use yare::parameterized;
 
-    #[test]
-    fn change_kind_round_trips() {
-        for kind in ChangeKind::STANDARD {
-            assert_eq!(kind.to_string().parse::<ChangeKind>(), Ok(kind));
-        }
+    #[parameterized(
+        added = { ChangeKind::Added },
+        changed = { ChangeKind::Changed },
+        deprecated = { ChangeKind::Deprecated },
+        removed = { ChangeKind::Removed },
+        fixed = { ChangeKind::Fixed },
+        security = { ChangeKind::Security },
+        custom = { ChangeKind::Custom(Cow::Borrowed("Performance")) },
+    )]
+    fn change_kind_round_trips(kind: ChangeKind) {
+        assert_eq!(kind.to_string().parse::<ChangeKind>(), Ok(kind));
     }
 
-    #[test]
-    fn change_kind_ignores_case_and_whitespace() {
-        assert_eq!(" security ".parse::<ChangeKind>(), Ok(ChangeKind::Security));
-        assert_eq!("FIXED".parse::<ChangeKind>(), Ok(ChangeKind::Fixed));
+    #[parameterized(
+        lowercase_with_whitespace = { " security ", ChangeKind::Security },
+        uppercase = { "FIXED", ChangeKind::Fixed },
+        mixed_case = { "dEpReCaTeD", ChangeKind::Deprecated },
+    )]
+    fn change_kind_ignores_case_and_whitespace(input: &str, expected: ChangeKind) {
+        assert_eq!(input.parse::<ChangeKind>(), Ok(expected));
     }
 
     #[test]
@@ -145,9 +155,11 @@ mod tests {
         assert_eq!(kind.to_string(), "Performance");
     }
 
-    #[test]
-    fn empty_change_kind() {
-        assert_eq!("".parse::<ChangeKind>(), Err(EmptyChangeKind));
-        assert_eq!("  ".parse::<ChangeKind>(), Err(EmptyChangeKind));
+    #[parameterized(
+        empty = { "" },
+        whitespace = { "  " },
+    )]
+    fn empty_change_kind(input: &str) {
+        assert_eq!(input.parse::<ChangeKind>(), Err(EmptyChangeKind));
     }
 }
