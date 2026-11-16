@@ -16,4 +16,9 @@ doc = false
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 notable = { version = "0.1.0", path = "../notable" }
+notable-merge = { version = "0.1.0", path = "../notable-merge" }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+assert_fs = "1.1.4"
+yare = { workspace = true }

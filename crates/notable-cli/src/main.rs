@@ -126,10 +126,70 @@ mod tests {
     }
 
     #[test]
-    fn merge_conflicts_subcommand() {
+    fn merge_conflicts_defaults() {
         let cli = Cli::try_parse_from(["notable", "merge-conflicts"]).unwrap();
 
-        assert!(matches!(cli.command, Subcommands::MergeConflicts(_)));
+        let Subcommands::MergeConflicts(opts) = cli.command else {
+            panic!("expected the merge-conflicts command");
+        };
+        assert_eq!(opts.path, Path::new("CHANGELOG.md"));
+        assert!(!opts.resolve);
+        assert!(!opts.diff);
+    }
+
+    #[test]
+    fn merge_conflicts_diff() {
+        let cli = Cli::try_parse_from(["notable", "merge-conflicts", "--diff"]).unwrap();
+
+        let Subcommands::MergeConflicts(opts) = cli.command else {
+            panic!("expected the merge-conflicts command");
+        };
+        assert!(opts.diff);
+    }
+
+    #[test]
+    fn merge_conflicts_interactive() {
+        for flag in ["--interactive", "-i"] {
+            let cli = Cli::try_parse_from(["notable", "merge-conflicts", flag]).unwrap();
+
+            let Subcommands::MergeConflicts(opts) = cli.command else {
+                panic!("expected the merge-conflicts command");
+            };
+            assert!(opts.interactive);
+        }
+    }
+
+    #[test]
+    fn merge_conflicts_interactive_conflicts_with_resolve_and_diff() {
+        for flag in ["--resolve", "--diff"] {
+            assert!(
+                Cli::try_parse_from(["notable", "merge-conflicts", "--interactive", flag]).is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn merge_conflicts_diff_conflicts_with_resolve() {
+        assert!(
+            Cli::try_parse_from(["notable", "merge-conflicts", "--diff", "--resolve"]).is_err()
+        );
+    }
+
+    #[test]
+    fn merge_conflicts_resolve_with_custom_path() {
+        let cli = Cli::try_parse_from([
+            "notable",
+            "merge-conflicts",
+            "docs/CHANGELOG.md",
+            "--resolve",
+        ])
+        .unwrap();
+
+        let Subcommands::MergeConflicts(opts) = cli.command else {
+            panic!("expected the merge-conflicts command");
+        };
+        assert_eq!(opts.path, Path::new("docs/CHANGELOG.md"));
+        assert!(opts.resolve);
     }
 
     #[test]

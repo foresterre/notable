@@ -4,6 +4,7 @@ members = [
     "crates/notable",
     "crates/notable-cli",
     "crates/notable-core",
+    "crates/notable-merge",
 ]
 
 [workspace.package]
