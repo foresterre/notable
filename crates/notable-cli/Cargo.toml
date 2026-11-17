@@ -7,6 +7,9 @@ license = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
 repository = { workspace = true }
+readme = { workspace = true }
+keywords = ["changelog", "keep-a-changelog", "lint", "merge-conflict", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "notable"
