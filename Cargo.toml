@@ -18,6 +18,6 @@ repository = "https://github.com/foresterre/notable"
 readme = "README.md"
 
 [workspace.dependencies]
-jiff = { version = "0.2.43", default-features = false, features = ["std"] }
+jiff = { version = "1.0.1", default-features = false, features = ["std"] }
 thiserror = "2.0.21"
 yare = "3.0.0"
